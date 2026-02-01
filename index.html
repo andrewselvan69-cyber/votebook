@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VoteBook | Mobile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+        
+        body { font-family: 'Lato', sans-serif; background-color: #000; color: #e5e5e5; -webkit-tap-highlight-color: transparent; padding-bottom: 0px; overflow: hidden; }
+        h1, h2, h3, .vip-font { font-family: 'Cinzel', serif; }
+        
+        .gold-text {
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .shake-anim { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; transform: translate3d(0, 0, 0); backface-visibility: hidden; perspective: 1000px; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* Scrollbar Hiding */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        
+        /* Dynamic Button States */
+        .btn-active-like { color: #22c55e !important; background-color: rgba(34, 197, 94, 0.1); }
+        .btn-active-dislike { color: #ef4444 !important; background-color: rgba(239, 68, 68, 0.1); }
+
+        /* Shorts Specific */
+        .short-video-container { height: calc(100vh - 120px); scroll-snap-type: y mandatory; overflow-y: scroll; }
+        .short-item { scroll-snap-align: start; height: 100%; position: relative; border-bottom: 1px solid #333; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="h-screen bg-black overflow-hidden flex flex-col" id="app-body">
+
+    <nav class="flex-none sticky top-0 z-40 bg-gray-900/95 border-b border-yellow-800 backdrop-blur-md">
+        <div class="px-4 py-3 flex justify-between items-center">
+            <div onclick="switchTab('feed')" class="flex items-center gap-2">
+                <i class="fa-solid fa-crown text-yellow-500 text-xl"></i>
+                <h1 class="text-xl font-bold gold-text tracking-widest">VoteBook</h1>
+                <span class="bg-red-700 text-white text-[8px] font-bold px-2 py-1 rounded border border-red-500 shadow-[0_0_8px_rgba(220,38,38,0.6)] tracking-wider">VIP ONLY</span>
+            </div>
+            <div class="flex gap-3">
+                <i class="fa-solid fa-bell text-gray-400"></i>
+                <i class="fa-brands fa-facebook-messenger text-gray-400"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main id="main-content" class="flex-1 overflow-y-auto max-w-md mx-auto w-full p-2 space-y-4 pb-20">
+        <div class="flex overflow-x-auto gap-2 py-2 mb-2 scrollbar-hide">
+            <div class="flex-shrink-0 w-20 h-32 bg-gray-800 rounded-lg border border-yellow-700 relative overflow-hidden">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" class="absolute inset-0 w-full h-full object-cover opacity-50">
+                <div class="absolute bottom-1 left-1 text-[10px] font-bold text-yellow-500">My Story</div>
+                <div class="absolute top-1 left-1 bg-blue-500 w-6 h-6 rounded-full flex items-center justify-center border-2 border-black text-white">+</div>
+            </div>
+            <div id="stories-container" class="flex gap-2"></div>
+        </div>
+
+        <div class="bg-gray-900 p-3 rounded-lg flex items-center gap-3 border border-gray-800">
+            <div class="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Commoner" class="w-full h-full object-cover">
+            </div>
+            <div onclick="alert('ERROR: Only VIPs are allowed to post opinions.')" class="bg-gray-800 flex-1 rounded-full px-4 py-2 text-gray-500 text-sm border border-gray-700">
+                Write something... (Restricted)
+            </div>
+        </div>
+
+        <div id="feed-container" class="space-y-4 pb-4"></div>
+    </main>
+
+    <div id="profile-view" class="hidden absolute inset-0 z-50 bg-black overflow-y-auto pb-20">
+        <div class="relative">
+            <div class="h-32 bg-gradient-to-r from-yellow-900 to-black w-full"></div>
+            <button onclick="switchTab('feed')" class="absolute top-4 left-4 bg-black/50 p-2 rounded-full text-white backdrop-blur"><i class="fa-solid fa-arrow-left"></i></button>
+            
+            <div class="absolute -bottom-12 left-4 p-1 bg-black rounded-full">
+                <img id="profile-avatar" src="" class="w-24 h-24 rounded-full border-4 border-yellow-600 object-cover bg-gray-800">
+            </div>
+        </div>
+        
+        <div class="mt-14 px-4 pb-4 border-b border-gray-800">
+            <h2 id="profile-name" class="text-2xl font-bold text-white flex items-center gap-2"></h2>
+            <p id="profile-title" class="text-yellow-500 text-sm font-serif mb-2"></p>
+            
+            <div class="flex gap-4 text-xs text-gray-400 mb-3">
+                <span><b>10M</b> Followers</span>
+                <span><b>0</b> Following</span>
+            </div>
+
+            <div class="flex gap-2">
+                <button id="profile-follow-btn" onclick="handleFollow()" class="flex-1 bg-blue-600 text-white py-1 rounded text-sm font-bold transition">Follow</button>
+                <button onclick="handleBribe()" class="flex-1 bg-gray-800 text-white py-1 rounded text-sm font-bold active:scale-95 transition">Bribe</button>
+            </div>
+        </div>
+        
+        <div class="p-4">
+            <h3 class="font-bold text-gray-400 text-sm mb-2">Previous Decrees</h3>
+            <div id="profile-posts-container" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <div id="watch-view" class="hidden flex-1 bg-black w-full max-w-md mx-auto">
+        <div id="shorts-container" class="short-video-container w-full h-full pb-20"></div>
+    </div>
+
+    <div id="admin-view" class="hidden flex-1 overflow-y-auto max-w-md mx-auto w-full p-4 space-y-4 pb-20">
+        <h2 class="text-2xl text-yellow-500 font-bold text-center mb-6">VIP CONTROL ROOM</h2>
+        
+        <div id="admin-login" class="space-y-4">
+            <input type="password" id="admin-pass" placeholder="Enter Secret Code (1967)" class="w-full bg-gray-800 text-white p-4 rounded-lg border border-gray-700 text-center text-lg">
+            <button onclick="checkAdmin()" class="w-full bg-yellow-600 text-black font-bold p-4 rounded-lg shadow-[0_0_15px_#ca8a04]">UNLOCK SYSTEM</button>
+        </div>
+
+        <div id="admin-tools" class="hidden space-y-6">
+            <div class="bg-gray-900 p-4 rounded-lg border border-yellow-800 shadow-[0_0_10px_rgba(202,138,4,0.2)]">
+                <h3 class="text-yellow-500 font-bold mb-3 border-b border-gray-700 pb-2">1. SELECT VIP IDENTITY</h3>
+                <div class="flex items-center gap-3 bg-black p-2 rounded border border-gray-700">
+                    <img id="admin-current-avatar" src="" class="w-12 h-12 rounded-full border border-yellow-500 object-cover">
+                    <div class="flex-1">
+                        <label class="text-[10px] text-gray-400 uppercase">Currently Acting As:</label>
+                        <select id="vip-select" onchange="updateAdminAvatar()" class="w-full bg-gray-800 text-white p-1 rounded text-sm border border-gray-600 outline-none"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                <h3 class="text-green-500 font-bold mb-3 text-sm">2. POST TO MAIN FEED</h3>
+                <textarea id="post-content" rows="4" placeholder="Write a new decree..." class="w-full bg-gray-800 p-3 rounded text-white border border-gray-600"></textarea>
+                <button onclick="publishPost()" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3 rounded shadow-lg mt-2">PUBLISH DECREE</button>
+            </div>
+            
+            <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                 <h3 class="text-red-500 font-bold mb-3 text-sm">3. POST SHORT VIDEO</h3>
+                 <p class="text-[10px] text-gray-400 mb-2">Posting as the selected VIP above.</p>
+                 <input id="short-title-input" type="text" placeholder="Short Caption/Title" class="w-full bg-gray-800 p-2 mb-2 rounded text-white border border-gray-700 text-sm">
+                 <input id="short-url-input" type="text" placeholder="Embed URL (Portrait)" class="w-full bg-gray-800 p-2 mb-2 rounded text-white border border-gray-700 text-sm">
+                 <button onclick="addShort()" class="w-full bg-red-900 text-red-200 py-2 rounded font-bold text-sm">UPLOAD SHORT</button>
+            </div>
+
+            <div class="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                <h3 class="text-gray-300 font-bold mb-3 text-sm">4. REGISTER NEW VIP</h3>
+                <input id="vip-name" type="text" placeholder="Name" class="w-full bg-gray-800 p-2 mb-2 rounded text-white border border-gray-700 text-sm">
+                <input id="vip-title" type="text" placeholder="Title" class="w-full bg-gray-800 p-2 mb-2 rounded text-white border border-gray-700 text-sm">
+                <label class="text-[10px] text-gray-500 uppercase">Faction Color (Hidden)</label>
+                <select id="vip-color" class="w-full bg-gray-800 p-2 mb-2 rounded text-white border border-gray-700 text-sm">
+                    <option value="blue">Blue Faction</option>
+                    <option value="red">Red Faction</option>
+                    <option value="yellow">Yellow Faction</option>
+                </select>
+                <button onclick="createVIP()" class="w-full bg-blue-900 text-blue-200 py-2 rounded font-bold text-sm">Add VIP</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 z-50 pb-safe">
+        <div class="flex justify-around items-center h-16 text-xs text-gray-400">
+            <button onclick="switchTab('feed')" class="flex flex-col items-center gap-1 w-full h-full justify-center active:text-yellow-500">
+                <i class="fa-solid fa-house text-xl"></i><span>Home</span>
+            </button>
+            <button onclick="switchTab('watch')" class="flex flex-col items-center gap-1 w-full h-full justify-center active:text-red-500">
+                <i class="fa-solid fa-play-circle text-xl"></i><span>Shorts</span>
+            </button>
+            <button onclick="switchTab('admin')" class="flex flex-col items-center gap-1 w-full h-full justify-center text-yellow-600">
+                <i class="fa-solid fa-user-secret text-xl"></i><span>Admin</span>
+            </button>
+        </div>
+    </nav>
+
+    <div id="comment-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/80" onclick="closeComments()"></div>
+        <div class="absolute bottom-0 w-full bg-gray-900 rounded-t-2xl slide-up h-[70vh] flex flex-col border-t border-gray-700">
+            <div class="w-full flex justify-center pt-3 pb-1"><div class="w-12 h-1 bg-gray-600 rounded-full"></div></div>
+            <div class="px-4 py-2 border-b border-gray-800 flex justify-between items-center">
+                <span class="font-bold text-gray-200">Comments</span>
+                <button onclick="closeComments()" class="text-gray-400"><i class="fa-solid fa-xmark fa-lg"></i></button>
+            </div>
+            <div id="comment-list" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+            
+            <div class="p-3 bg-gray-800 border-t border-gray-700">
+                <div class="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button onclick="postPreMade('Yes Boss! ❤')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-yellow-600 hover:text-black">Yes Boss! ❤</button>
+                    <button onclick="postPreMade('Mashallah!')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-green-600 hover:text-white">Mashallah!</button>
+                    <button onclick="postPreMade('Ague Jan Sir 🔥')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-blue-600 hover:text-white">Ague Jan Sir 🔥</button>
+                </div>
+                <div class="flex gap-2 items-center">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Commoner" class="w-8 h-8 rounded-full object-cover">
+                    <div class="flex-1 relative">
+                        <input type="text" id="fake-input" onkeydown="handleTyping()" placeholder="Write a comment..." class="w-full bg-gray-900 rounded-full px-4 py-2 text-sm text-white focus:outline-none border border-gray-700">
+                        <div id="typing-error" class="hidden absolute -top-8 left-0 bg-red-600 text-white text-xs px-2 py-1 rounded shadow-lg">⚠️ Commoner Detected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA & STATE ---
+        const defaultVIPs = [
+            { id: 'vip1', name: "Minister of Protocols", title: "Chief of Traffic", avatar: "https://i.imgur.com/T0YyYRy.jpeg", color: "blue" },
+            { id: 'vip2', name: "Syndicate Boss", title: "Price Hiker", avatar: "https://i.imgur.com/Sb2dVIo.jpeg", color: "red" },
+            { id: 'vip3', name: "Committee Head", title: "Director of Delays", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Granny", color: "yellow" }
+        ];
+
+        const defaultPosts = [
+            { id: 1, vipId: 'vip1', content: "I am stuck in traffic. I have ordered to move the city 5km to the left.", timestamp: Date.now() - 3600000, likes: 15400, userAction: null },
+            { id: 2, vipId: 'vip2', content: "Green Chili is now 1000tk. It is good for health to eat less chili.", timestamp: Date.now() - 86400000, likes: 400, userAction: null }
+        ];
+
+        // NEW: Shorts data now linked to VIP IDs
+        const defaultShorts = [
+            { id: 's1', vipId: 'vip2', url: "https://www.youtube.com/embed/shorts/VIDEO_ID_HERE", title: "My New 50th Car", views: "10M" },
+            { id: 's2', vipId: 'vip1', url: "https://www.youtube.com/embed/shorts/THIRD_ID", title: "Road Construction Update (Delayed)", views: "500k" }
+        ];
+
+        const commonerNames = ["Rakib Hasan", "Sumon Ahmed", "Mithu420", "Angel Priya", "Abul Kashem", "Rickshaw Wala", "Bekar Jubok", "Nahid Khan"];
+        const commonerComments = ["Yes Boss!", "Sir you are great.", "Next PM confirmed!", "100% Right Sir", "Egiyie jan, amra achi.", "Big fan sir!", "Gorib er bondhu", "Mashallah"];
+        const vipComments = ["Excellent speech.", "We need a meeting about this.", "Funds approved.", "I will tell the PM about this.", "Let's discuss this over dinner in Singapore."];
+
+        let vips = JSON.parse(localStorage.getItem('vb_vips')) || defaultVIPs;
+        let posts = JSON.parse(localStorage.getItem('vb_posts')) || defaultPosts;
+        let shorts = JSON.parse(localStorage.getItem('vb_shorts')) || defaultShorts;
+        let following = JSON.parse(localStorage.getItem('vb_following')) || [];
+        let currentProfileId = null;
+
+        function save() {
+            localStorage.setItem('vb_vips', JSON.stringify(vips));
+            localStorage.setItem('vb_posts', JSON.stringify(posts));
+            localStorage.setItem('vb_shorts', JSON.stringify(shorts));
+            localStorage.setItem('vb_following', JSON.stringify(following));
+        }
+
+        // --- RENDER FEED ---
+        function renderFeed() {
+            const container = document.getElementById('feed-container');
+            container.innerHTML = '';
+            const sortedPosts = [...posts].sort((a, b) => b.timestamp - a.timestamp);
+            sortedPosts.forEach(post => {
+                const vip = vips.find(v => v.id === post.vipId) || vips[0];
+                container.appendChild(createPostCard(post, vip));
+            });
+            renderStories();
+        }
+
+        function createPostCard(post, vip) {
+            const timeStr = timeAgo(post.timestamp);
+            let likeClass = "text-gray-400 hover:bg-gray-800";
+            let likeText = "ZINDABAD";
+            if(post.userAction === 'liked') { likeClass = "btn-active-like"; likeText = "VOTED!"; }
+            let baalClass = "text-gray-400 hover:bg-red-900/20 hover:text-red-500 group";
+            if(post.userAction === 'disliked') { baalClass = "btn-active-dislike"; }
+
+            const div = document.createElement('div');
+            div.className = "bg-gray-900 border-y border-gray-800 mb-2 pb-2";
+            div.innerHTML = `
+                <div class="p-3 flex gap-3 items-center">
+                    <div onclick="openProfile('${vip.id}')" class="cursor-pointer">
+                        <img src="${vip.avatar}" class="w-10 h-10 rounded-full border border-yellow-600 object-cover">
+                    </div>
+                    <div class="flex-1">
+                        <h3 onclick="openProfile('${vip.id}')" class="font-bold text-gray-200 text-sm flex items-center gap-1 cursor-pointer">${vip.name} <i class="fa-solid fa-circle-check text-blue-500 text-[10px]"></i></h3>
+                        <div class="flex items-center text-[10px] text-gray-500 gap-1"><span>${timeStr}</span> • <i class="fa-solid fa-earth-asia"></i></div>
+                    </div>
+                    <button class="text-gray-500"><i class="fa-solid fa-ellipsis"></i></button>
+                </div>
+                <div class="px-3 pb-2 text-sm text-gray-300 leading-relaxed font-serif">${post.content}</div>
+                <div class="px-3 py-2 flex justify-between items-center text-[10px] text-gray-500 border-b border-gray-800">
+                    <div class="flex items-center gap-1"><div class="bg-green-600 text-white w-4 h-4 rounded-full flex items-center justify-center"><i class="fa-solid fa-thumbs-up text-[8px]"></i></div><span id="like-count-${post.id}">${(post.likes).toLocaleString()} Zindabads</span></div>
+                    <div>1.2k Comments</div>
+                </div>
+                <div class="px-2 pt-1 flex justify-between gap-1">
+                    <button id="btn-zindabad-${post.id}" onclick="handleZindabad(${post.id})" class="flex-1 py-2 rounded flex items-center justify-center gap-2 ${likeClass} active:scale-95 transition">
+                        <i class="fa-solid fa-thumbs-up"></i> <span class="text-xs font-bold uppercase">${likeText}</span>
+                    </button>
+                    <button id="btn-baal-${post.id}" onclick="handleBaal(${post.id}, '${vip.name}')" class="flex-1 py-2 rounded flex items-center justify-center gap-2 ${baalClass} active:scale-95 transition">
+                        <i class="fa-solid fa-thumbs-down"></i> <span class="text-xs font-bold uppercase">Baal</span>
+                    </button>
+                    <button onclick="openComments('${post.id}')" class="flex-1 py-2 rounded flex items-center justify-center gap-2 text-gray-400 hover:bg-gray-800 active:scale-95 transition">
+                        <i class="fa-regular fa-comment-dots"></i> <span class="text-xs font-bold uppercase">Praise</span>
+                    </button>
+                </div>
+            `;
+            return div;
+        }
+
+        // --- PROFILE LOGIC ---
+        function openProfile(vipId) {
+            const vip = vips.find(v => v.id === vipId);
+            if(!vip) return;
+            currentProfileId = vipId;
+            document.getElementById('profile-view').classList.remove('hidden');
+            const followBtn = document.getElementById('profile-follow-btn');
+            if (following.includes(vipId)) {
+                followBtn.innerText = "Following";
+                followBtn.className = "flex-1 bg-gray-600 text-white py-1 rounded text-sm font-bold transition";
+            } else {
+                followBtn.innerText = "Follow";
+                followBtn.className = "flex-1 bg-blue-600 text-white py-1 rounded text-sm font-bold transition";
+            }
+            document.getElementById('profile-name').innerHTML = `${vip.name} <i class="fa-solid fa-circle-check text-blue-500 text-sm"></i>`;
+            document.getElementById('profile-title').innerText = vip.title;
+            document.getElementById('profile-avatar').src = vip.avatar;
+            const vipPosts = posts.filter(p => p.vipId === vipId).sort((a,b) => b.timestamp - a.timestamp);
+            const container = document.getElementById('profile-posts-container');
+            container.innerHTML = '';
+            if(vipPosts.length === 0) container.innerHTML = `<div class="text-center text-gray-500 text-xs py-10">This VIP is currently sleeping.</div>`;
+            else vipPosts.forEach(post => container.appendChild(createPostCard(post, vip)));
+        }
+
+        function handleFollow() {
+            const btn = document.getElementById('profile-follow-btn');
+            if(following.includes(currentProfileId)) {
+                following = following.filter(id => id !== currentProfileId);
+                btn.innerText = "Follow";
+                btn.className = "flex-1 bg-blue-600 text-white py-1 rounded text-sm font-bold transition";
+            } else {
+                following.push(currentProfileId);
+                btn.innerText = "Following";
+                btn.className = "flex-1 bg-gray-600 text-white py-1 rounded text-sm font-bold transition";
+            }
+            save();
+        }
+
+        function handleBribe() {
+            alert("🚨 ANTI-CORRUPTION ALERT 🚨\n\nYou want to bribe a politician?\n\nActually, the amount is too low. Please sell your kidney and try again.");
+        }
+
+        // --- INTERACTIONS ---
+        function handleZindabad(postId) {
+            const post = posts.find(p => p.id === postId);
+            if(!post) return;
+            if (post.userAction === 'liked') { post.likes--; post.userAction = null; } 
+            else { if(post.userAction === 'disliked') post.likes++; post.likes++; post.userAction = 'liked'; }
+            save(); renderFeed(); if(currentProfileId) openProfile(currentProfileId);
+        }
+
+        function handleBaal(postId, vipName) {
+            const post = posts.find(p => p.id === postId);
+            if(!post) return;
+            if (post.userAction === 'disliked') { post.likes++; post.userAction = null; } 
+            else {
+                if(post.userAction === 'liked') post.likes--;
+                post.likes--; post.userAction = 'disliked';
+                
+                const body = document.getElementById('app-body');
+                body.classList.add('shake-anim');
+                setTimeout(() => { body.classList.remove('shake-anim'); }, 500);
+                setTimeout(() => {
+                    alert(`SECURITY ALERT\n\nYou clicked 'Baal' on ${vipName}'s post.\n\nYour GPS location has been sent to the police and ${vipName}'s private mob\n\nStay where you are`);
+                }, 100);
+            }
+            save(); renderFeed(); if(currentProfileId) openProfile(currentProfileId);
+        }
+
+        // --- WATCH (SHORTS) LOGIC ---
+        function renderShorts() {
+            const container = document.getElementById('shorts-container');
+            container.innerHTML = '';
+            
+            if(shorts.length === 0) {
+                 container.innerHTML = '<div class="text-gray-500 text-center mt-20">No Shorts Available. Admin needs to post.</div>';
+                 return;
+            }
+
+            shorts.forEach(s => {
+                // Find VIP associated with the short
+                const vip = vips.find(v => v.id === s.vipId) || { name: "System", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=System" };
+                createShortCard(s, vip, container);
+            });
+        }
+
+        function createShortCard(short, vip, container) {
+            const div = document.createElement('div');
+            div.className = "short-item w-full relative bg-gray-900";
+            div.innerHTML = `
+                <iframe class="w-full h-full object-cover" src="${short.url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                
+                <div class="absolute right-2 bottom-20 flex flex-col gap-6 items-center z-10">
+                    <div class="flex flex-col items-center">
+                        <div class="w-10 h-10 rounded-full bg-gray-700 border border-yellow-500 overflow-hidden mb-1"><img src="${vip.avatar}" class="w-full h-full object-cover"></div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-heart text-2xl text-white drop-shadow-lg"></i>
+                        <span class="text-xs text-white font-bold drop-shadow-md">24K</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-comment-dots text-2xl text-white drop-shadow-lg"></i>
+                        <span class="text-xs text-white font-bold drop-shadow-md">1.2K</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <i class="fa-solid fa-share text-2xl text-white drop-shadow-lg"></i>
+                        <span class="text-xs text-white font-bold drop-shadow-md">Share</span>
+                    </div>
+                </div>
+
+                <div class="absolute bottom-4 left-4 right-16 z-10 pointer-events-none">
+                    <h3 class="text-white font-bold text-shadow-md mb-1">@${vip.name} <i class="fa-solid fa-circle-check text-blue-500 text-xs"></i></h3>
+                    <p class="text-white text-sm leading-tight text-shadow-md">${short.title}</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <i class="fa-solid fa-music text-xs text-white animate-spin"></i>
+                        <span class="text-xs text-gray-200">Original Sound - VIP Records</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        // --- COMMENTS ---
+        function openComments(pid) { 
+            const post = posts.find(p => p.id == pid);
+            const author = vips.find(v => v.id === post.vipId);
+            document.getElementById('comment-modal').classList.remove('hidden'); 
+            const list = document.getElementById('comment-list');
+            list.innerHTML = "";
+            
+            for(let i=0; i<8; i++) {
+                const name = commonerNames[Math.floor(Math.random() * commonerNames.length)];
+                const text = commonerComments[Math.floor(Math.random() * commonerComments.length)];
+                list.innerHTML += `<div class="flex gap-2 items-start"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${name}" class="w-8 h-8 rounded-full bg-gray-800"><div class="bg-gray-800 p-2 rounded-2xl rounded-tl-none"><div class="text-xs font-bold text-gray-400">${name}</div><div class="text-xs text-gray-200">${text}</div></div></div>`;
+            }
+
+            if(author && author.color) {
+                const sameColorVips = vips.filter(v => v.color === author.color && v.id !== author.id);
+                sameColorVips.forEach(v => {
+                    const vipText = vipComments[Math.floor(Math.random() * vipComments.length)];
+                    list.innerHTML += `<div class="flex gap-2 items-start mt-2"><img src="${v.avatar}" class="w-8 h-8 rounded-full border border-${getColorClass(v.color)} object-cover"><div class="bg-gray-900 border border-gray-700 p-2 rounded-2xl rounded-tl-none"><div class="text-xs font-bold text-yellow-500 flex items-center gap-1">${v.name} <i class="fa-solid fa-circle-check"></i></div><div class="text-xs text-white font-serif">${vipText}</div></div></div>`;
+                });
+            }
+        }
+        function getColorClass(color) { if(color === 'red') return 'red-600'; if(color === 'blue') return 'blue-600'; return 'yellow-600'; }
+        function closeComments() { document.getElementById('comment-modal').classList.add('hidden'); }
+        function handleTyping() {
+            const inp = document.getElementById('fake-input');
+            const err = document.getElementById('typing-error');
+            inp.classList.add('border-red-500'); err.classList.remove('hidden');
+            setTimeout(() => inp.value = "", 100);
+            setTimeout(() => { inp.classList.remove('border-red-500'); err.classList.add('hidden'); }, 2000);
+        }
+        function postPreMade(txt) {
+            const list = document.getElementById('comment-list');
+            list.innerHTML += `<div class="flex gap-2 mt-2 animate-pulse"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Commoner" class="w-8 h-8 rounded-full bg-gray-700"><div class="bg-blue-900/30 border border-blue-800 p-2 rounded-2xl rounded-tl-none"><div class="text-xs font-bold text-white">Me</div><div class="text-xs text-gray-200">${txt}</div></div></div>`;
+            list.scrollTop = list.scrollHeight;
+        }
+
+        // --- ADMIN ---
+        function checkAdmin() {
+            if (document.getElementById('admin-pass').value === "1967") {
+                document.getElementById('admin-login').classList.add('hidden');
+                document.getElementById('admin-tools').classList.remove('hidden');
+                loadVIPSelect();
+            } else alert("Shob jaygay angul na dile hoy na?!");
+        }
+        function loadVIPSelect() {
+            const select = document.getElementById('vip-select'); select.innerHTML = '';
+            vips.forEach(vip => { const opt = document.createElement('option'); opt.value = vip.id; opt.innerText = vip.name; select.appendChild(opt); });
+            updateAdminAvatar();
+        }
+        function updateAdminAvatar() {
+            const select = document.getElementById('vip-select'); const vip = vips.find(v => v.id === select.value);
+            if(vip) document.getElementById('admin-current-avatar').src = vip.avatar;
+        }
+        function createVIP() {
+            const name = document.getElementById('vip-name').value;
+            const title = document.getElementById('vip-title').value;
+            const color = document.getElementById('vip-color').value;
+            if(!name) return;
+            vips.push({ id: 'vip' + Date.now(), name, title, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`, color });
+            save(); loadVIPSelect(); alert("VIP Created with " + color + " faction!");
+        }
+        
+        // --- POSTING FUNCTIONS (USE SELECTED VIP) ---
+        function publishPost() {
+            const vipId = document.getElementById('vip-select').value; // Using selected VIP
+            const content = document.getElementById('post-content').value;
+            if(!content) return;
+            posts.unshift({ id: Date.now(), vipId, content, timestamp: Date.now(), likes: Math.floor(Math.random() * 50000), userAction: null });
+            save(); document.getElementById('post-content').value = ''; alert("Decree Posted successfully!"); switchTab('feed');
+        }
+
+        function addShort() {
+            const vipId = document.getElementById('vip-select').value; // Using selected VIP
+            const url = document.getElementById('short-url-input').value;
+            const title = document.getElementById('short-title-input').value;
+            if(!url) return;
+            shorts.unshift({ id: Date.now(), vipId: vipId, url: url, title: title || "New VIP Update", views: "100K" });
+            save(); renderShorts(); 
+            document.getElementById('short-url-input').value = '';
+            document.getElementById('short-title-input').value = '';
+            alert("Short Posted for " + (vips.find(v=>v.id===vipId)?.name || "VIP"));
+            switchTab('watch');
+        }
+
+        // --- UTILS ---
+        function timeAgo(dateParam) {
+            const seconds = Math.round((new Date() - new Date(dateParam)) / 1000);
+            if (seconds < 60) return 'Just now';
+            const minutes = Math.round(seconds / 60);
+            if (minutes < 60) return `${minutes}m`;
+            const hours = Math.round(minutes / 60);
+            if (hours < 24) return `${hours}h`;
+            return `${Math.round(hours / 24)}d`;
+        }
+        function switchTab(tab) {
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('admin-view').classList.add('hidden');
+            document.getElementById('watch-view').classList.add('hidden');
+            document.getElementById('profile-view').classList.add('hidden');
+            currentProfileId = null;
+
+            if(tab === 'feed') { document.getElementById('main-content').classList.remove('hidden'); renderFeed(); } 
+            else if (tab === 'watch') { document.getElementById('watch-view').classList.remove('hidden'); renderShorts(); } 
+            else if (tab === 'admin') { document.getElementById('admin-view').classList.remove('hidden'); }
+        }
+        function renderStories() {
+            const c = document.getElementById('stories-container'); c.innerHTML = '';
+            vips.forEach(vip => { c.innerHTML += `<div onclick="openProfile('${vip.id}')" class="flex-shrink-0 w-20 h-32 bg-gray-800 rounded-lg overflow-hidden relative border border-gray-700 cursor-pointer"><img src="${vip.avatar}" class="w-full h-full object-cover"><div class="absolute bottom-0 w-full bg-black/60 p-1"><p class="text-[9px] text-white text-center truncate">${vip.name}</p></div></div>`; });
+        }
+
+        // Init
+        renderFeed();
+        renderShorts();
+    </script>
+</body>
+</html>
