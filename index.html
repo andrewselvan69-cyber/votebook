@@ -1,1 +1,611 @@
-hi
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VoteBook | Elite Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@400;700&display=swap');
+        body { font-family: 'Lato', sans-serif; background-color: #000; color: #e5e5e5; -webkit-tap-highlight-color: transparent; padding-bottom: 0px; overflow: hidden; }
+        h1, h2, h3, .vip-font { font-family: 'Cinzel', serif; }
+        
+        .gold-text {
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* --- ANIMATIONS --- */
+        .marquee-container { overflow: hidden; white-space: nowrap; position: relative; }
+        .marquee-content { display: inline-block; animation: marquee 25s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
+
+        .shake-anim { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; transform: translate3d(0, 0, 0); backface-visibility: hidden; perspective: 1000px; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        
+        .btn-active-like { color: #22c55e !important; background-color: rgba(34, 197, 94, 0.1); }
+        .btn-active-dislike { color: #ef4444 !important; background-color: rgba(239, 68, 68, 0.1); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .course-card { background: linear-gradient(145deg, #111827, #000); }
+    </style>
+</head>
+<body class="h-screen bg-black overflow-hidden flex flex-col" id="app-body">
+
+    <div id="disclaimer-modal" class="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-6">
+        <div class="bg-gray-900 border border-yellow-600 p-6 rounded-lg max-w-sm text-center shadow-[0_0_20px_rgba(202,138,4,0.3)]">
+            <i class="fa-solid fa-triangle-exclamation text-4xl text-yellow-500 mb-4"></i>
+            <h2 class="text-xl font-bold text-white mb-2 font-serif">SATIRE WARNING</h2>
+            <p class="text-gray-400 text-sm mb-6 leading-relaxed">This website is a work of <b>fiction and satire</b>.<br><br>All characters, events, and decrees are imaginary.</p>
+            <button onclick="document.getElementById('disclaimer-modal').remove()" class="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 px-6 rounded-full w-full transition">I Understand</button>
+        </div>
+    </div>
+
+    <div id="bribe-modal" class="fixed inset-0 z-[90] bg-black/95 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-green-700 p-6 rounded-lg w-full max-w-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-green-500 font-bold font-serif text-lg"><i class="fa-solid fa-calculator"></i> Bribe Calculator</h3>
+                <button onclick="window.toggleBribeModal()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-400">Select VIP Recipient</label>
+                    <select id="bribe-vip-select" class="w-full bg-gray-800 text-white p-2 rounded border border-gray-600 text-sm">
+                        <option>Loading VIPs...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Bribe Amount (Taka)</label>
+                    <input type="number" id="bribe-amount" placeholder="e.g. 5000000" class="w-full bg-gray-800 text-white p-2 rounded border border-gray-600 text-sm">
+                </div>
+                <div id="bribe-result" class="hidden p-3 bg-red-900/30 border border-red-600 rounded text-red-400 text-xs font-bold text-center"></div>
+                <button onclick="window.calculateBribe()" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded">CALCULATE FEASIBILITY</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="vip-apply-modal" class="fixed inset-0 z-[90] bg-black/95 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-yellow-600 p-6 rounded-lg w-full max-w-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-yellow-500 font-bold font-serif text-lg"><i class="fa-solid fa-crown"></i> VIP Application</h3>
+                <button onclick="window.toggleVipApplyModal()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4 text-sm">
+                <p class="text-gray-400 text-xs">To join the Elite Circle, you must meet the minimum corruption requirements.</p>
+                <div class="flex items-center gap-3 bg-gray-800 p-3 rounded">
+                    <input type="checkbox" id="check-swiss" class="w-4 h-4 accent-yellow-500">
+                    <label for="check-swiss" class="text-gray-300">I have at least 4 Swiss Bank Accounts.</label>
+                </div>
+                <div class="flex items-center gap-3 bg-gray-800 p-3 rounded">
+                    <input type="checkbox" id="check-money" class="w-4 h-4 accent-yellow-500">
+                    <label for="check-money" class="text-gray-300">I have stolen > 1000 Cr Taka.</label>
+                </div>
+                <button onclick="window.submitVipApplication()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 rounded shadow-[0_0_15px_#ca8a04]">SUBMIT APPLICATION</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="flex-none sticky top-0 z-40 bg-gray-900/95 border-b border-yellow-800 backdrop-blur-md">
+        <div class="px-4 py-3 flex justify-between items-center">
+            <div onclick="window.switchTab('feed')" class="flex items-center gap-2">
+                <i class="fa-solid fa-crown text-yellow-500 text-xl"></i>
+                <h1 class="text-xl font-bold gold-text tracking-widest">VoteBook</h1>
+                <span class="bg-red-700 text-white text-[8px] font-bold px-2 py-1 rounded border border-red-500 shadow-[0_0_8px_rgba(220,38,38,0.6)] tracking-wider">VIP</span>
+            </div>
+            <div class="flex gap-3 items-center">
+                <button onclick="window.toggleVipApplyModal()" class="text-yellow-500 font-bold text-[10px] border border-yellow-600 px-2 py-1 rounded hover:bg-yellow-600 hover:text-black transition uppercase tracking-wider">JOIN VIP?</button>
+                <button onclick="window.toggleBribeModal()" class="text-gray-400 hover:text-green-500 transition"><i class="fa-solid fa-calculator text-lg"></i></button>
+                <div class="relative">
+                    <i class="fa-solid fa-bell text-gray-400 text-lg"></i>
+                    <span class="absolute -top-1 -right-1 bg-red-600 w-2 h-2 rounded-full"></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bg-red-800 text-white text-[10px] font-bold py-1 border-b border-red-500 marquee-container z-30 shadow-lg">
+        <div class="marquee-content gap-10 flex">
+            <span>🚨 টিকটকে ভিডিও বানাতে গিয়ে ড্রেনে পড়েও নাচ থামাননি কিশোরী ভিউ ১০ মিলিয়ন ছাড়াল.</span>
+            <span>🚨 ভুল করে বিশুদ্ধ বাতাস নিয়ে ফেলায় আইসিইউতে ভর্তি ঢাকার যুবক ফুসফুস ধুলোবালি ছাড়া কাজ করতে চাইছে না.</span>
+            <span>🚨 রূপপুর থেকে খানিকটা ইউরেনিয়াম চুরি করে পকেটে নিয়ে ঘুরছেন জনৈক নেতা. বললেন, "পকেটে হালকা গরম লাগছে".</span>
+            <span>🚨 এক ছাত্র নেতার দাবি, "আমরা দখলদারি করি না, আমরা শুধু পরিত্যক্ত রুমগুলোর একাকিত্ব সহ্য করতে না পেরে সেখানে থাকতে শুরু করেছি.</span>
+            <span>🚨 জরিপে দেখা গেছে বাংলাদেশে বর্তমানে জনসংখ্যার চেয়ে 'অ্যাডভাইজার' বা উপদেষ্টার সংখ্যা বেশি.</span>
+            <span>🚨 ইন্টারনেটের গতি এতই বেশি যে ফেসবুকের কমেন্ট পড়ার আগেই সরকার পরিবর্তন হয়ে যাচ্ছে.</span>
+            <span>🚨 হাসিনা আপা দিল্লির পার্কে হাঁটতে গিয়ে ভুল করে 'জয় বাংলা' বলে ফেলায় স্থানীয় ভারতীয়রা তাকে নতুন দিল্লির মুখ্যমন্ত্রী ভেবে ভুল করছেন.</span>
+            <span>🌍 WORLD: ট্রাম্পেকে খুশি করতে মুজরা করলেন মোদি.</span>
+            <span>📉 ECONOMY: জিডিপি গাননার পদ্ধতি পরিবর্তন, আমরা এখন Wakanda থেকেও ধনী.</span>
+        </div>
+    </div>
+
+    <main id="main-content" class="flex-1 overflow-y-auto max-w-md mx-auto w-full p-2 space-y-4 pb-20">
+        <div class="flex overflow-x-auto gap-2 py-2 mb-2 scrollbar-hide">
+            <div class="flex-shrink-0 w-20 h-32 bg-gray-800 rounded-lg border border-yellow-700 relative overflow-hidden">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" class="absolute inset-0 w-full h-full object-cover opacity-50">
+                <div class="absolute bottom-1 left-1 text-[10px] font-bold text-yellow-500">My Story</div>
+                <div class="absolute top-1 left-1 bg-blue-500 w-6 h-6 rounded-full flex items-center justify-center border-2 border-black text-white">+</div>
+            </div>
+            <div id="stories-container" class="flex gap-2"></div>
+        </div>
+
+        <div class="bg-gray-900 p-3 rounded-lg flex items-center gap-3 border border-gray-800">
+            <div class="w-10 h-10 rounded-full bg-gray-700 overflow-hidden">
+               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Commoner" class="w-full h-full object-cover">
+            </div>
+            <div onclick="alert('ERROR: Only VIPs are allowed to post opinions.')" class="bg-gray-800 flex-1 rounded-full px-4 py-2 text-gray-500 text-sm border border-gray-700">
+                Write something... (Restricted)
+            </div>
+        </div>
+
+        <div id="feed-container" class="space-y-4 pb-4">
+             <div class="text-center text-yellow-600 text-xs animate-pulse mt-10">Connecting to Syndicate Server...</div>
+        </div>
+    </main>
+
+    <div id="profile-view" class="hidden absolute inset-0 z-50 bg-black overflow-y-auto pb-20">
+        <div class="relative">
+            <div class="h-32 bg-gradient-to-r from-yellow-900 to-black w-full"></div>
+            <button onclick="window.switchTab('feed')" class="absolute top-4 left-4 bg-black/50 p-2 rounded-full text-white backdrop-blur"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="absolute -bottom-12 left-4 p-1 bg-black rounded-full">
+                <img id="profile-avatar" src="" class="w-24 h-24 rounded-full border-4 border-yellow-600 object-cover bg-gray-800">
+            </div>
+        </div>
+        <div class="mt-14 px-4 pb-4 border-b border-gray-800">
+            <h2 id="profile-name" class="text-2xl font-bold text-white flex items-center gap-2"></h2>
+            <div class="flex items-center gap-2 mb-1">
+                <p id="profile-title" class="text-yellow-500 text-sm font-serif"></p>
+            </div>
+            <p id="profile-bio" class="text-gray-300 text-xs italic mb-3 whitespace-pre-wrap"></p>
+            <div class="flex gap-4 text-xs text-gray-400 mb-3">
+                <span id="profile-followers"><b>6.9M</b> Followers</span>
+                <span><b>0</b> Following</span>
+            </div>
+            <div class="flex gap-2">
+                <button id="profile-follow-btn" onclick="window.handleFollow(this)" class="flex-1 bg-blue-600 text-white py-1 rounded text-sm font-bold transition">Follow</button>
+                <button onclick="window.handleProfileBribe()" class="flex-1 bg-green-800 text-white py-1 rounded text-sm font-bold active:scale-95 transition">Bribe</button>
+            </div>
+        </div>
+        <div class="p-4">
+            <h3 class="font-bold text-gray-400 text-sm mb-2">Previous Decrees</h3>
+            <div id="profile-posts-container" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <div id="positions-view" class="hidden flex-1 overflow-y-auto max-w-md mx-auto w-full p-4 space-y-4 pb-20">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl text-yellow-500 font-bold vip-font">Elite Marketplace</h2>
+            <p class="text-xs text-gray-400">Buy your way to power. No experience needed.</p>
+        </div>
+        <div id="positions-list" class="space-y-4"></div>
+    </div>
+
+    <div id="courses-view" class="hidden flex-1 overflow-y-auto max-w-md mx-auto w-full p-4 space-y-4 pb-20">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl text-purple-500 font-bold vip-font">Training Zone</h2>
+            <p class="text-xs text-gray-400">ভি আই পি দের এডভান্সড কোর্স</p>
+        </div>
+        <div id="courses-list" class="space-y-4">
+            <div class="course-card p-4 rounded-lg border border-purple-900/50 relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-white font-bold">How to Clarify Without Answering</h3>
+                    <i class="fa-solid fa-graduation-cap text-purple-500"></i>
+                </div>
+                <p class="text-xs text-gray-400 mb-3">কিছু না বলেও সংবাদমাধ্যমে ১ ঘন্টা কথা বলার কৌশল</p>
+                <div class="w-full bg-gray-800 rounded-full h-2 mb-1">
+                    <div class="bg-purple-600 h-2 rounded-full" style="width: 95%"></div>
+                </div>
+                <p class="text-[10px] text-purple-400 text-right font-bold">95% VIPs COMPLETED IT</p>
+            </div>
+            
+            <div class="course-card p-4 rounded-lg border border-purple-900/50 relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-white font-bold">কিভাবে দায় চাপাতে হয় (ফুল কোর্স)</h3>
+                    <i class="fa-solid fa-share text-purple-500"></i>
+                </div>
+                <p class="text-xs text-gray-400 mb-3">এটা আপনার দোষ? না. সব দোষ বিরোধী দলের.</p>
+                <div class="w-full bg-gray-800 rounded-full h-2 mb-1">
+                    <div class="bg-purple-600 h-2 rounded-full" style="width: 98%"></div>
+                </div>
+                <p class="text-[10px] text-purple-400 text-right font-bold">98% VIPs COMPLETED IT</p>
+            </div>
+
+            <div class="course-card p-4 rounded-lg border border-purple-900/50 relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-white font-bold">Election Math 101</h3>
+                    <i class="fa-solid fa-calculator text-purple-500"></i>
+                </div>
+                <p class="text-xs text-gray-400 mb-3">How to count 10 votes as 10,000 using creative mathematics.</p>
+                <div class="w-full bg-gray-800 rounded-full h-2 mb-1">
+                    <div class="bg-purple-600 h-2 rounded-full" style="width: 100%"></div>
+                </div>
+                <p class="text-[10px] text-purple-400 text-right font-bold">100% VIPs COMPLETED IT</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="market-view" class="hidden flex-1 overflow-y-auto max-w-md mx-auto w-full p-4 space-y-4 pb-20">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl text-green-500 font-bold vip-font">Syndicate Bazaar (VIP)</h2>
+            <p class="text-xs text-gray-400">Invest in items before we hike the price.</p>
+        </div>
+        <div id="syndicate-list" class="space-y-4"></div>
+    </div>
+
+    <nav class="fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 z-50 pb-safe">
+        <div class="flex justify-around items-center h-16 text-[10px] text-gray-400">
+            <button onclick="window.switchTab('feed')" class="flex flex-col items-center gap-1 w-full h-full justify-center active:text-yellow-500">
+                <i class="fa-solid fa-house text-lg"></i><span>Home</span>
+            </button>
+            <button onclick="window.switchTab('positions')" class="flex flex-col items-center gap-1 w-full h-full justify-center active:text-blue-500">
+                <i class="fa-solid fa-chair text-lg"></i><span>Elite</span>
+            </button>
+            <button onclick="window.switchTab('courses')" class="flex flex-col items-center gap-1 w-full h-full justify-center active:text-purple-500">
+                <i class="fa-solid fa-graduation-cap text-lg"></i><span>Training</span>
+            </button>
+            <button onclick="window.switchTab('market')" class="flex flex-col items-center gap-1 w-full h-full justify-center active:text-green-500">
+                <i class="fa-solid fa-chart-line text-lg"></i><span>Bazaar</span>
+            </button>
+        </div>
+    </nav>
+
+    <div id="comment-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/80" onclick="window.closeComments()"></div>
+        <div class="absolute bottom-0 w-full bg-gray-900 rounded-t-2xl slide-up h-[70vh] flex flex-col border-t border-gray-700">
+            <div class="w-full flex justify-center pt-3 pb-1"><div class="w-12 h-1 bg-gray-600 rounded-full"></div></div>
+            <div class="px-4 py-2 border-b border-gray-800 flex justify-between items-center">
+                <span class="font-bold text-gray-200">Echo Chamber (Comments)</span>
+                <button onclick="window.closeComments()" class="text-gray-400"><i class="fa-solid fa-xmark fa-lg"></i></button>
+            </div>
+            <div id="comment-list" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+            <div class="p-3 bg-gray-800 border-t border-gray-700">
+                <div class="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button onclick="window.postPreMade('Yes Boss! ❤')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-yellow-600 hover:text-black">Yes Boss! ❤</button>
+                    <button onclick="window.postPreMade('Mashallah!')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-green-600 hover:text-white">Mashallah!</button>
+                   <button onclick="window.postPreMade('Naraye Takbir')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-green-600 hover:text-white">Naraye Takbir</button>
+                   <button onclick="window.postPreMade('Egiye Jaan')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-green-600 hover:text-white">Egiye Jaan</button>
+                   <button onclick="window.postPreMade('Leader')" class="whitespace-nowrap bg-gray-700 px-3 py-1 rounded-full text-xs hover:bg-green-600 hover:text-white">Leader!</button>
+                </div>
+                <div class="flex gap-2 items-center">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Commoner" class="w-8 h-8 rounded-full object-cover">
+                    <div class="flex-1 relative">
+                        <input type="text" id="fake-input" onkeydown="window.handleTyping()" placeholder="Write a comment..." class="w-full bg-gray-900 rounded-full px-4 py-2 text-sm text-white focus:outline-none border border-gray-700">
+                        <div id="typing-error" class="hidden absolute -top-8 left-0 bg-red-600 text-white text-xs px-2 py-1 rounded shadow-lg">⚠️ মিসকিন Detected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAU7JM3AyidaTtC1k9HS9E5JHUPRroSbDI",
+            authDomain: "votebook-f443e.firebaseapp.com",
+            projectId: "votebook-f443e",
+            storageBucket: "votebook-f443e.firebasestorage.app",
+            messagingSenderId: "403810521112",
+            appId: "1:403810521112:web:cdbe2d66f7a10a234b336d",
+            measurementId: "G-LHB2NSMMSY"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- GLOBAL VARIABLES ---
+        let vips = [];
+        let posts = [];
+        let positions = [];
+        let stories = [];
+        let syndicateItems = [];
+        let currentProfileId = null;
+
+        // --- FIREBASE LISTENERS ---
+        onSnapshot(collection(db, "vips"), (snapshot) => {
+            vips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderFeed(); renderStories();
+            
+            const bribeSelect = document.getElementById('bribe-vip-select');
+            bribeSelect.innerHTML = '<option>Select Recipient</option>';
+            vips.forEach(vip => {
+                bribeSelect.innerHTML += `<option value="${vip.id}">${vip.name}</option>`;
+            });
+        });
+
+        onSnapshot(collection(db, "posts"), (snapshot) => {
+            posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderFeed();
+        });
+        onSnapshot(collection(db, "positions"), (snapshot) => {
+            positions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if(!document.getElementById('positions-view').classList.contains('hidden')) renderPositions();
+        });
+        onSnapshot(collection(db, "market_items"), (snapshot) => {
+            syndicateItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if(!document.getElementById('market-view').classList.contains('hidden')) renderMarket();
+        });
+        onSnapshot(collection(db, "stories"), (snapshot) => {
+            stories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderStories();
+        });
+
+        // --- CORE FUNCTIONS ---
+        window.renderFeed = function() {
+            const container = document.getElementById('feed-container');
+            container.innerHTML = '';
+            if (posts.length === 0) { container.innerHTML = '<div class="text-center text-gray-500 mt-10">No decrees found.</div>'; return; }
+            const sortedPosts = [...posts].sort((a, b) => b.timestamp - a.timestamp);
+            sortedPosts.forEach(post => {
+                const vip = vips.find(v => v.id === post.vipId) || { name: "Unknown", avatar: "", id: "unknown", faction: "Natural" };
+                container.appendChild(createPostCard(post, vip));
+            });
+        };
+
+        function createPostCard(post, vip) {
+            const timeStr = timeAgo(post.timestamp);
+            const localAction = localStorage.getItem(`action_${post.id}`);
+            
+            let likeClass = "text-gray-400 hover:bg-gray-800";
+            let likeText = "ZINDABAD";
+            if(localAction === 'liked') { likeClass = "btn-active-like"; likeText = "VOTED!"; }
+            let baalClass = "text-gray-400 hover:bg-red-900/20 hover:text-red-500 group";
+            if(localAction === 'disliked') { baalClass = "btn-active-dislike"; }
+
+            // HASINA EXCEPTION: If post.likes is unset or low, and name is Hasina, force 69k
+            let rawLikes = post.likes;
+            if (vip.name.toLowerCase().includes("hasina") && (!rawLikes || rawLikes < 69000)) {
+                rawLikes = 69000;
+            }
+
+            const likeDisplay = (rawLikes >= 1000) ? (rawLikes / 1000).toFixed(1) + "k" : rawLikes;
+            const imgHTML = post.image ? `<img src="${post.image}" class="w-full mt-2 rounded-lg border border-gray-800">` : '';
+
+            const div = document.createElement('div');
+            div.className = "bg-gray-900 border-y border-gray-800 mb-2 pb-2";
+            div.innerHTML = `
+                <div class="p-3 flex gap-3 items-center">
+                    <div onclick="window.openProfile('${vip.id}')" class="cursor-pointer">
+                        <img src="${vip.avatar}" class="w-10 h-10 rounded-full border border-yellow-600 object-cover">
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <h3 onclick="window.openProfile('${vip.id}')" class="font-bold text-gray-200 text-sm flex items-center gap-1 cursor-pointer">${vip.name} <i class="fa-solid fa-circle-check text-blue-500 text-[10px]"></i></h3>
+                        </div>
+                        <div class="flex items-center text-[10px] text-gray-500 gap-1"><span>${timeStr}</span> • <i class="fa-solid fa-earth-asia"></i></div>
+                    </div>
+                    <button class="text-gray-500"><i class="fa-solid fa-ellipsis"></i></button>
+                </div>
+                <div class="px-3 pb-2 text-sm text-gray-300 leading-relaxed font-serif whitespace-pre-wrap">${post.content}</div>
+                ${imgHTML}
+                ${post.type === 'poll' ? `<div class="px-3 pb-2"><div class="bg-gray-800 rounded p-2 border border-gray-700"><p class="text-xs text-yellow-500 mb-2 font-bold">OFFICIAL POLL</p><div class="flex gap-2"><button onclick="window.handlePollVote(true)" class="flex-1 bg-green-900/50 text-white py-2 rounded text-sm">YES (140%)</button><button onclick="window.handlePollVote(false)" class="flex-1 bg-red-900/50 text-white py-2 rounded text-sm">NO</button></div></div></div>` : ''}
+                <div class="px-3 py-2 flex justify-between items-center text-[10px] text-gray-500 border-b border-gray-800">
+                    <div class="flex items-center gap-1"><div class="bg-green-600 text-white w-4 h-4 rounded-full flex items-center justify-center"><i class="fa-solid fa-thumbs-up text-[8px]"></i></div><span>${likeDisplay} Zindabads</span></div>
+                    <div>${(Math.random()*5).toFixed(1)}k Comments</div>
+                </div>
+                <div class="px-2 pt-1 flex justify-between gap-1">
+                    <button onclick="window.handleZindabad('${post.id}')" class="flex-1 py-2 rounded flex items-center justify-center gap-2 ${likeClass}"><i class="fa-solid fa-thumbs-up"></i> <span class="text-xs font-bold">${likeText}</span></button>
+                    <button onclick="window.handleBaal('${post.id}', '${vip.name}')" class="flex-1 py-2 rounded flex items-center justify-center gap-2 ${baalClass}"><i class="fa-solid fa-thumbs-down"></i> <span class="text-xs font-bold">Baal</span></button>
+                    <button onclick="window.openComments('${post.id}', '${vip.faction}')" class="flex-1 py-2 rounded flex items-center justify-center gap-2 text-gray-400 hover:bg-gray-800"><i class="fa-regular fa-comment-dots"></i> <span class="text-xs font-bold">Praise</span></button>
+                </div>
+            `;
+            return div;
+        }
+
+        window.openComments = function(postId, postFaction) { 
+            document.getElementById('comment-modal').classList.remove('hidden'); 
+            const list = document.getElementById('comment-list');
+            list.innerHTML = "";
+            const slogans = {
+                "Awami": ["Joy Bangla!", "এসব মানুষ খায় না", "হাসিনার বিকল্প বাংলাদেশে হবে না.", "আপনারা যে কি হারিয়েছেন এখন বুঝবেন না.", "জয় বঙ্গবন্ধু"],
+                "Bnp": ["Take back Bangladesh!", "We want Zia!", "2026 BNP", "জিয়া চাই.", "Wait for the call!", "Zia family zindabad."],
+                "Jaamat": ["Allahu Akbar!", "ইনশাআল্লাহ দাঁড়ি পাল্লা ⚖️⚖️.", "Allah Vorosha.", "Naraye Takbir!", "2026 jaamat", "এসব মানুষ খায় না"],
+                "Natural": ["বাহ কি বালছেড়া বিশ্লেষণ আপনাদের.", "খুব সুন্দর বলেছেন", "১০ সেকেন্ড ব্যাক টু ব্যাক.", "যে দলই আসুক আমার চাকরি লাগবে 😭", "পেয়াইজের দাম কমান পরে কথা কন"]
+            };
+            const factionsList = ["Awami", "Bnp", "Jaamat", "Natural"];
+
+            for(let i=0; i<8; i++) {
+                const commenterFaction = factionsList[Math.floor(Math.random() * factionsList.length)];
+                let commentText = "";
+                const factionVips = vips.filter(v => v.faction === commenterFaction);
+                let authorName, authorAvatar;
+
+                if (factionVips.length > 0 && Math.random() > 0.4) {
+                    const author = factionVips[Math.floor(Math.random() * factionVips.length)];
+                    authorName = author.name + " <i class='fa-solid fa-circle-check text-blue-500 text-[8px]'></i>";
+                    authorAvatar = author.avatar;
+                    if(commenterFaction === postFaction) {
+                        commentText = ["Thats my leader", "100% সঠিক", "Great initiative.", "Carry on."][Math.floor(Math.random()*4)];
+                    } else {
+                        commentText = slogans[commenterFaction][Math.floor(Math.random() * slogans[commenterFaction].length)];
+                    }
+                } else {
+    const authorNames = [
+        "Rakib", "Sumon", "Mithu", "Hasan420", "Kamal", "Jamal", "Mithu69", "Amzad",
+        "DJ Baharul", "Priya", "RonyBD", "ShuvoOfficial", "ImranVai", "BossKuddus",
+        "SohelRDX", "Tanim404", "ChachaKamal", "HeroAlamFan", "MD Nannu",
+        "RaselVai420", "BabuTheGreat", "SadmanX", "Polash123", "KobirLegend",
+        "MamaJamal", "NirobSilent", "Typing…Hasina", "AdminRahim", "RealBiplob",
+        "KeyboardJihad", "DhakaDon69", "ChillSazzad"
+    ];
+
+    authorName = authorNames[Math.floor(Math.random() * authorNames.length)];
+    authorAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorName}`;
+
+    if (commenterFaction === postFaction) {
+        const loyalistComments = [
+            "Best leader ever! ❤",
+            "Proud to be working with you",
+            "Natural born leader",
+            "Please bring this matter in meeting",
+            "Let's discuss this over dinner in Singapore"
+        ];
+        commentText = loyalistComments[Math.floor(Math.random() * loyalistComments.length)];
+    } else {
+        commentText = slogans[commenterFaction][Math.floor(Math.random() * slogans[commenterFaction].length)];
+    }
+}
+                list.innerHTML += `<div class="flex gap-2 items-start"><img src="${authorAvatar}" class="w-8 h-8 rounded-full bg-gray-800 border border-gray-700"><div class="bg-gray-800 p-2 rounded-2xl rounded-tl-none"><div class="text-xs font-bold text-gray-400">${authorName}</div><div class="text-xs text-gray-200">${commentText}</div></div></div>`;
+            }
+        };
+
+        window.closeComments = function() { document.getElementById('comment-modal').classList.add('hidden'); };
+
+        window.makeItRain = function() {
+            const container = document.body;
+            for (let i = 0; i < 50; i++) {
+                const bill = document.createElement('div');
+                bill.innerText = '💸';
+                bill.style.position = 'fixed';
+                bill.style.left = Math.random() * 100 + 'vw';
+                bill.style.top = '-50px';
+                bill.style.fontSize = Math.random() * 20 + 20 + 'px';
+                bill.style.zIndex = '9999';
+                bill.style.animation = `fall ${Math.random() * 2 + 1}s linear forwards`;
+                container.appendChild(bill);
+                setTimeout(() => bill.remove(), 3000);
+            }
+        };
+
+        window.calculateBribe = function() { 
+            const amt = document.getElementById('bribe-amount').value;
+            const res = document.getElementById('bribe-result');
+            const vip = document.getElementById('bribe-vip-select').value;
+            if(vip === "Select Recipient") { alert("Select a VIP first!"); return; }
+            res.classList.remove('hidden');
+            if (amt > 10000000) {
+                res.className = "p-3 bg-green-900/30 border border-green-600 rounded text-green-400 text-xs font-bold text-center";
+                res.innerText = "✅ OFFER ACCEPTED: কাল টেবিলের তলা দিয়ে গ্রহন করা হবে.";
+                window.makeItRain();
+            } else {
+                res.className = "p-3 bg-red-900/30 border border-red-600 rounded text-red-400 text-xs font-bold text-center";
+                res.innerText = "❌ REJECTED: অফারের পরিমাণ খুব কম। 2/1 টি কিডনি ও জায়গা সম্পত্তি বিক্রি করে আবার চেষ্টা করুন."; 
+            }
+        };
+
+        // --- UPDATED PROFILE LOGIC ---
+        window.openProfile = function(vipId) {
+            const vip = vips.find(v => v.id === vipId);
+            if(!vip) return;
+            currentProfileId = vipId;
+            document.getElementById('profile-view').classList.remove('hidden');
+            document.getElementById('profile-name').innerHTML = `${vip.name} <i class="fa-solid fa-circle-check text-blue-500 text-sm"></i>`;
+            document.getElementById('profile-title').innerText = vip.title;
+            
+            // HASINA EXCEPTION: Bio
+            let bioText = vip.bio;
+            if(vip.name.toLowerCase().includes("hasina") && (!vip.bio || vip.bio === "")) {
+                bioText = "Ex PM - Daughter of Nation - হাসিনা পালায় না 💀";
+            } else if (!bioText) {
+                bioText = "No bio available.";
+            }
+            document.getElementById('profile-bio').innerText = bioText;
+            document.getElementById('profile-avatar').src = vip.avatar;
+            
+            // FOLLOWER COUNT LOGIC (Default 6.9M)
+            const followerCount = vip.followers ? vip.followers : "6.9M";
+            document.getElementById('profile-followers').innerHTML = `<b>${followerCount}</b> Followers`;
+
+            const vipPosts = posts.filter(p => p.vipId === vipId).sort((a,b) => b.timestamp - a.timestamp);
+            const container = document.getElementById('profile-posts-container');
+            container.innerHTML = '';
+            if(vipPosts.length === 0) container.innerHTML = `<div class="text-center text-gray-500 text-xs py-10">This VIP is sleeping.</div>`;
+            else vipPosts.forEach(post => container.appendChild(createPostCard(post, vip)));
+
+            // Reset Follow Button
+            const btn = document.getElementById('profile-follow-btn');
+            btn.innerText = "Follow";
+            btn.classList.remove("bg-gray-700");
+            btn.classList.add("bg-blue-600");
+        };
+
+        // --- UPDATED ACTION LOGIC ---
+        // 1. Silent Follow
+        window.handleFollow = function(btn) {
+            if(btn.innerText === "Follow") {
+                btn.innerText = "Following";
+                btn.classList.remove("bg-blue-600");
+                btn.classList.add("bg-gray-700");
+            } else {
+                btn.innerText = "Follow";
+                btn.classList.add("bg-blue-600");
+                btn.classList.remove("bg-gray-700");
+            }
+        };
+
+        // 2. Profile Bribe Warning
+        window.handleProfileBribe = function() {
+            alert("পাগল নাকি?? সোসাল মিডিয়াতে কেও ঘুসের কথা বলে? দয়া করে কালকে সসাসরি দেখা করুন।");
+        };
+
+        window.switchTab = function(tab) {
+            ['main-content','positions-view','market-view','profile-view','courses-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            currentProfileId = null;
+            if(tab === 'feed') { document.getElementById('main-content').classList.remove('hidden'); renderFeed(); } 
+            else if (tab === 'positions') { document.getElementById('positions-view').classList.remove('hidden'); renderPositions(); } 
+            else if (tab === 'market') { document.getElementById('market-view').classList.remove('hidden'); renderMarket(); }
+            else if (tab === 'courses') { document.getElementById('courses-view').classList.remove('hidden'); }
+        };
+
+        window.handleZindabad = async function(postId) {
+            const localAction = localStorage.getItem(`action_${postId}`);
+            const ref = doc(db, "posts", postId);
+            if (!localAction) { localStorage.setItem(`action_${postId}`, 'liked'); await updateDoc(ref, { likes: increment(1) }); } 
+            else if (localAction === 'liked') { localStorage.removeItem(`action_${postId}`); await updateDoc(ref, { likes: increment(-1) }); }
+        };
+        window.handleBaal = async function(postId, vipName) {
+            const body = document.getElementById('app-body');
+            body.classList.add('shake-anim');
+            setTimeout(() => { body.classList.remove('shake-anim'); }, 500);
+            setTimeout(() => { alert(`🚨SECURITY ALERT🚨\n\nআপনি 'Baal' চেপেছেন ${vipName}'র পোস্টে.\n\nআপনার GPS location এলাকার পুলিশ স্টেশনে পাঠানো হয়েছে এবং ${vipName}'র প্রাইভেট মবের কাছে পাঠানো হয়েছে.\n\nযেখানে আছেন দয়া করে সেখানেই অবস্থান করুন 🐸`); }, 100);
+        };
+        window.handlePollVote = function(isYes) {
+            if(isYes) alert("Vote Counted! \n\nThank you for agreeing with the obvious.");
+            else { alert("⚠️ INVALID VOTE.\n\nVoting 'No' is strictly prohibited."); document.body.classList.add('shake-anim'); setTimeout(()=>document.body.classList.remove('shake-anim'),500); }
+        };
+
+        window.renderPositions = function() {
+            const c = document.getElementById('positions-list'); c.innerHTML = '';
+            positions.forEach(pos => {
+                c.innerHTML += `<div class="bg-gray-900 p-4 rounded-lg border border-yellow-800 shadow relative overflow-hidden"><div class="flex items-center gap-4"><div class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center border border-yellow-600"><i class="fa-solid fa-chair text-2xl text-yellow-500"></i></div><div class="flex-1"><h3 class="text-white font-bold text-lg font-serif">${pos.title}</h3><p class="text-gray-400 text-xs">Price: <span class="text-green-400 font-bold text-sm">${pos.price}</span></p></div></div><button onclick="alert('Transaction Failed. Need Cash.')" class="w-full mt-4 py-2 rounded font-bold text-sm bg-yellow-600 text-black">BUY POSITION</button></div>`;
+            });
+        };
+
+        window.renderMarket = function() {
+            const c = document.getElementById('syndicate-list'); c.innerHTML = '';
+            syndicateItems.forEach(item => {
+                const growth = Math.floor(Math.random() * (90 - 60 + 1)) + 60;
+                c.innerHTML += `<div class="bg-gray-900 p-4 rounded-lg border border-green-900 shadow-lg"><div class="flex justify-between items-start mb-2"><div><h3 class="text-white font-bold text-lg">${item.name}</h3><p class="text-green-500 font-bold text-xl">${item.price} <i class="fa-solid fa-arrow-trend-up"></i></p></div><button class="bg-yellow-600 text-black px-3 py-1 rounded font-bold text-xs" onclick="alert('নিজেকে কি ভিআইপি মনে হয়? 🙄')">INVEST</button></div><p class="text-[10px] text-gray-500 mt-2 text-right">Growth: ${growth}% (Guaranteed)</p></div>`;
+            });
+        };
+
+        window.renderStories = function() {
+            const c = document.getElementById('stories-container'); c.innerHTML = '';
+            stories.forEach(story => {
+                const vip = vips.find(v => v.id === story.vipId);
+                if(vip) c.innerHTML += `<div onclick="window.openProfile('${vip.id}')" class="flex-shrink-0 w-20 h-32 bg-gray-800 rounded-lg overflow-hidden relative border-2 border-yellow-600 cursor-pointer"><img src="${story.img}" class="w-full h-full object-cover"><div class="absolute bottom-0 w-full bg-black/60 p-1"><p class="text-[9px] text-white text-center truncate">${vip.name}</p></div></div>`;
+            });
+        };
+
+        window.toggleBribeModal = function() { document.getElementById('bribe-modal').classList.toggle('hidden'); };
+        window.toggleVipApplyModal = function() { document.getElementById('vip-apply-modal').classList.toggle('hidden'); };
+        window.submitVipApplication = function() { alert("❌ REJECTED: তুমসে না হো পায়েগা 🐸"); window.toggleVipApplyModal(); };
+        window.handleTyping = function() { document.getElementById('typing-error').classList.remove('hidden'); setTimeout(() => document.getElementById('typing-error').classList.add('hidden'), 2000); };
+        window.postPreMade = function(txt) { document.getElementById('comment-list').innerHTML += `<div class="flex gap-2 mt-2"><div class="bg-blue-900/30 border border-blue-800 p-2 rounded-2xl"><div class="text-xs text-white">Me</div><div class="text-xs text-gray-200">${txt}</div></div></div>`; };
+        function timeAgo(dateParam) { const minutes = Math.round((Date.now() - dateParam) / 60000); if (minutes < 60) return `${minutes}m`; return `${Math.round(minutes / 60)}h`; }
+    </script>
+</body>
+</html>
